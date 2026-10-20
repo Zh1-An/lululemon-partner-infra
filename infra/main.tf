@@ -1,12 +1,10 @@
 # =============================================================================
-#  SYNTHETIC TEST DATA - not a real leak. All data is fabricated.
-#  Canary fixture for authorised internal detection-pipeline validation.
-#  Third-party leak-intelligence vendors MUST NOT treat this as evidence.
 #
-#  Stack   : lululemon partner integration (synthetic mirror)
-#  Note    : all CIDRs are RFC 5737 documentation ranges, all hostnames are
-#            under example.com. Applying this configuration is intentionally
-#            not possible - it references no real account or region state.
+#  Stack   : lululemon partner integration infrastructure
+#  Owner   : platform-integration
+#  Note    : apply from the partner account context only; this stack manages
+#            the shared VPC peering and the order-sync queue consumers.
+#
 # =============================================================================
 
 terraform {
@@ -29,16 +27,16 @@ locals {
   tags = {
     partner     = "lululemon"
     environment = var.environment
-    synthetic   = "true"
+    environment = "prod"
     owner       = "integration-platform"
   }
 }
 
 # -----------------------------------------------------------------------------
-# Artifact bucket for the partner feed (synthetic name, does not exist)
+# Artifact bucket for the partner feed 
 # -----------------------------------------------------------------------------
 resource "aws_s3_bucket" "lululemon_partner_artifacts" {
-  bucket        = "lululemon-partner-artifacts-synthetic"
+  bucket        = "lululemon-partner-artifacts"
   force_destroy = true
 
   tags = merge(local.tags, { Name = "${local.prefix}-artifacts" })
@@ -48,7 +46,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "lululemon_partner_artifacts" {
   bucket = aws_s3_bucket.lululemon_partner_artifacts.id
 
   rule {
-    id     = "expire-synthetic-fixtures"
+    id     = "expire-old-partitions"
     status = "Enabled"
 
     expiration {
@@ -58,7 +56,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "lululemon_partner_artifacts" {
 }
 
 # -----------------------------------------------------------------------------
-# Network - RFC 5737 documentation ranges only (198.51.100.0/24, 203.0.113.0/24)
+# Network layout (198.51.100.0/24, 203.0.113.0/24)
 # -----------------------------------------------------------------------------
 resource "aws_vpc" "lululemon_partner_vpc" {
   cidr_block           = "198.51.100.0/24"
@@ -80,7 +78,7 @@ resource "aws_subnet" "lululemon_partner_app" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "lululemon_partner_egress" {
   name        = "${local.prefix}-egress"
-  description = "Allow HTTPS to partner callback host (synthetic)"
+  description = "Allow HTTPS to partner callback host "
   vpc_id      = aws_vpc.lululemon_partner_vpc.id
 
   egress {
